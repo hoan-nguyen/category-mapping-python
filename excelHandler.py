@@ -18,7 +18,13 @@ data = get_data("data_categories.ods")
 
 # test call procedure
 print("CALL PROCEDURE...")
-db.callproc('add_taxonomy_test', ('TEST01' , 1,'TEST01', 1,1,1,1))
+# db.execute("select * from wr_staging.taxonomy_taxonomy where category = 'Bingo Halls' , parent_id = 58")
+db.execute("select * from wr_staging.taxonomy_taxonomy where category = %s and parent_id = %s", ('Bingo Halls', 58))
+check = db.fetchall()
+print('check = ', check)
+# db.callproc('add_taxonomy', ('TEST01' , 1,'TEST01', 1,1,1,1))
+
+# db.callproc('add_taxonomy', ('Farms' , 30995, 'Farms', 1,1,1,1))
 procRes = db.fetchone()
 print(procRes)
 print("FINISH CALLING PROCEDURE...")
@@ -44,7 +50,7 @@ for e in data["WR Biz Taxonomy Yelp Mapping"]:
 		# find ids of parent categories
 		parent = e[index - 6].strip()
 		id_list = []
-		sql = "select * from wr_staging.test_taxonomy_taxonomy where category = %s"
+		sql = "select * from wr_staging.taxonomy_taxonomy where category = %s"
 		val = (parent,)
 
 		try:
@@ -59,10 +65,10 @@ for e in data["WR Biz Taxonomy Yelp Mapping"]:
 			"""
 			if len(result) == 0:
 				#insert parent into DB
-				db.callproc('add_taxonomy_test', (parent , 1, parent, 1,1,1,1))
+				db.callproc('add_taxonomy', (parent , 1, parent, 1,0,1,None))
 
 				# GET ID of parent
-				get_id_parent_sql = "select id from wr_staging.test_taxonomy_taxonomy where category = %s"
+				get_id_parent_sql = "select id from wr_staging.taxonomy_taxonomy where category = %s"
 				get_id_parent_val = (parent,)
 
 				try:
@@ -70,12 +76,13 @@ for e in data["WR Biz Taxonomy Yelp Mapping"]:
 					id_parent = db.fetchall()
 
 					# insert sub-category into db with new created parent
-					db.callproc('add_taxonomy_test', (category , id_parent, category, 1,1,1,1))
+					db.callproc('add_taxonomy', (category , id_parent, category, 1,0,1,None))
 					newCreatedCnt += 1
+					logFile.write("new created: " + category)
 
 				except Exception as e:
-					logFile.write(e)
-					raise
+					logFile.write(str(e))
+					# raise
 				else:
 					pass
 				finally:
@@ -85,18 +92,25 @@ for e in data["WR Biz Taxonomy Yelp Mapping"]:
 				for res in result:
 					print(category, '=>' ,res)
 					try:
-						db.callproc('add_taxonomy_test', (category , res[0], category, 1,1,1,1))
-						newCreatedCnt += 1
+
+						db.execute("select * from wr_staging.taxonomy_taxonomy where category = %s and parent_id = %s", (category, res[0],))
+						check = db.fetchall()
+
+						if len(check) == 0:
+							db.callproc('add_taxonomy', (category , res[0], category, 1,0,1,None))
+							logFile.write("new created: " + category)
+							newCreatedCnt += 1
 					except Exception as e:
-						logFile.write(e)
-						raise
+						print('res = ', res)
+						logFile.write(str(e) +  ' => ' + str(res))
+						# raise
 					else:
 						pass
 					finally:
 						pass
 
 		except Exception as e:
-			logFile.write(e)
+			logFile.write(str(e))
 			raise
 		else:
 			pass
@@ -105,7 +119,7 @@ for e in data["WR Biz Taxonomy Yelp Mapping"]:
 
 print('newCreatedCnt = ', newCreatedCnt)
 file = open("result.txt","w")
-file.write(json.dumps(data))
+# file.write(json.dumps(data))
 
 print("DONE")
 
