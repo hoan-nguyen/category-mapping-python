@@ -30,7 +30,7 @@ print("FINISH CALLING PROCEDURE...")
 def addCategories(line):
 	# categories = [line[2], line[3], line[4], line[5]]
 	line.pop()
-	categories = line[1: len(line)]
+	categories = line
 
 	for i in range(len(categories)):
 		category = categories[i].strip()
@@ -49,7 +49,7 @@ def addCategories(line):
 				continue
 
 		# handle from level 2 ->  5
-		parent_category = line[i]
+		parent_category = line[i - 1]
 		get_parent_id_sql = "select id from wr_beta.taxonomy_taxonomy where category = %s"
 
 		try:
