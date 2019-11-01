@@ -5,10 +5,10 @@ import mysql.connector
 
 
 mydb = mysql.connector.connect(
-	host="52.0.121.30",
+	host="wikireviews-staging-db.codti60ftvmt.us-east-1.rds.amazonaws.com",
 	user="root",
-	passwd="wiki@abc",
-	database="wr_staging"  #"category_mapping"
+	passwd="mRlxUJMhQW3",
+	database="wr_beta"
 
 )
 db = mydb.cursor()
@@ -18,8 +18,10 @@ data = get_data("data_categories.ods")
 
 # test call procedure
 print("CALL PROCEDURE...")
-# db.execute("select * from wr_staging.taxonomy_taxonomy where category = 'Bingo Halls' , parent_id = 58")
-db.execute("select * from wr_staging.taxonomy_taxonomy where category = %s and parent_id = %s", ('Bingo Halls', 58))
+# db.execute("select * from wr_beta.taxonomy_taxonomy where category = 'Bingo Halls' , parent_id = 58")
+# db.execute("select * from wr_beta.taxonomy_taxonomy where category = %s and parent_id = %s", ('Bingo Halls', 58))
+
+db.execute("select * from wr_beta.taxonomy_taxonomy where category = %s and parent_id = %s", ('Internet', 296))
 check = db.fetchall()
 print('check = ', check)
 # db.callproc('add_taxonomy', ('TEST01' , 1,'TEST01', 1,1,1,1))
@@ -43,14 +45,14 @@ for e in data["WR Biz Taxonomy Yelp Mapping"]:
 			found = True
 			break
 	if found:
-		print("e = ", e, "index = ", index)
+		# print("e = ", e, "index = ", index)
 		category = ''
 		category = e[index - 5].strip()
 
 		# find ids of parent categories
 		parent = e[index - 6].strip()
 		id_list = []
-		sql = "select * from wr_staging.taxonomy_taxonomy where category = %s"
+		sql = "select * from wr_beta.taxonomy_taxonomy where category = %s"
 		val = (parent,)
 
 		try:
@@ -68,7 +70,7 @@ for e in data["WR Biz Taxonomy Yelp Mapping"]:
 				db.callproc('add_taxonomy', (parent , 1, parent, 1,0,1,None))
 
 				# GET ID of parent
-				get_id_parent_sql = "select id from wr_staging.taxonomy_taxonomy where category = %s"
+				get_id_parent_sql = "select id from wr_beta.taxonomy_taxonomy where category = %s"
 				get_id_parent_val = (parent,)
 
 				try:
@@ -77,6 +79,7 @@ for e in data["WR Biz Taxonomy Yelp Mapping"]:
 
 					# insert sub-category into db with new created parent
 					db.callproc('add_taxonomy', (category , id_parent, category, 1,0,1,None))
+					print("new parent created: ", category, id_parent)
 					newCreatedCnt += 1
 					logFile.write("new created: " + category)
 
@@ -90,18 +93,19 @@ for e in data["WR Biz Taxonomy Yelp Mapping"]:
 
 			else:
 				for res in result:
-					print(category, '=>' ,res)
+					# print(category, '=>' ,res)
 					try:
 
-						db.execute("select * from wr_staging.taxonomy_taxonomy where category = %s and parent_id = %s", (category, res[0],))
+						db.execute("select * from wr_beta.taxonomy_taxonomy where category = %s and parent_id = %s", (category, res[0],))
 						check = db.fetchall()
 
 						if len(check) == 0:
 							db.callproc('add_taxonomy', (category , res[0], category, 1,0,1,None))
 							logFile.write("new created: " + category)
 							newCreatedCnt += 1
+							print("new created: ", category, res[0])
 					except Exception as e:
-						print('res = ', res)
+						# print('res = ', res)
 						logFile.write(str(e) +  ' => ' + str(res))
 						# raise
 					else:
