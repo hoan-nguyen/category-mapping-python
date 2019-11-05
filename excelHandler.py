@@ -49,11 +49,11 @@ for e in data["WR Biz Taxonomy Yelp Mapping"]:
 		category = ''
 		category = e[index - 5].strip()
 
-		# find ids of parent categories
+		# find ids of parent categories. Note that acutally parent categories here are under Business Main category (id 115)
 		parent = e[index - 6].strip()
 		id_list = []
-		sql = "select * from wr_beta.taxonomy_taxonomy where category = %s"
-		val = (parent,)
+		sql = "select * from wr_beta.taxonomy_taxonomy where category = %s and parent_id = %s"
+		val = (parent, 115)
 
 		try:
 			db.execute(sql, val)
