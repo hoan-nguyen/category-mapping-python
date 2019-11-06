@@ -18,9 +18,6 @@ data = get_data("data_categories.ods")
 
 # test call procedure
 print("CALL PROCEDURE...")
-# db.execute("select * from wr_beta.taxonomy_taxonomy where category = 'Bingo Halls' , parent_id = 58")
-# db.execute("select * from wr_beta.taxonomy_taxonomy where category = %s and parent_id = %s", ('Bingo Halls', 58))
-
 db.execute("select * from wr_beta.taxonomy_taxonomy where category = %s and parent_id = %s", ('Internet', 296))
 check = db.fetchall()
 print('check = ', check)
@@ -37,6 +34,7 @@ newCreatedCnt = 0
 for e in data["WR Biz Taxonomy Yelp Mapping"]:
 	# print("e = ", e)
 	e = e + [''] * (10- len(e))
+	e = e[1:]
 	found = False
 	index = -1
 	for i, value in reversed(list(enumerate(e))):
@@ -45,73 +43,62 @@ for e in data["WR Biz Taxonomy Yelp Mapping"]:
 			found = True
 			break
 	if found:
-		# print("e = ", e, "index = ", index)
-		category = ''
-		category = e[index - 5].strip()
+		print("e = ", e, "index = ", index)
+		parentId = 115
+		category = e[0].strip()
 
-		# find ids of parent categories. Note that acutally parent categories here are under Business Main category (id 115)
-		parent = e[index - 6].strip()
-		id_list = []
-		sql = "select * from wr_beta.taxonomy_taxonomy where category = %s and parent_id = %s"
-		val = (parent, 115)
+		sql = "select id from wr_beta.taxonomy_taxonomy where category = %s and parent_id = %s"
+		val = (category, parentId)
 
 		try:
 			db.execute(sql, val)
-			# list of ids will be fetched
 			result = db.fetchall()
 
-			# there are two cases here:
-			"""
-			if parent is not existing  => create parent then get the id of parent => insert into DB
-			else => traverse a result list => insert every single item into DB
-			"""
 			if len(result) == 0:
-				#insert parent into DB
-				db.callproc('add_taxonomy', (parent , 1, parent, 1,0,1,None))
+				print("no existing")
 
-				# GET ID of parent
-				get_id_parent_sql = "select id from wr_beta.taxonomy_taxonomy where category = %s"
-				get_id_parent_val = (parent,)
+				# create new
+				db.callproc('add_taxonomy', (category , parentId, category, 1,0,1,None))
+				logFile.write("new PARENT created: " + category + " with parentId = " + str(parentId))
+				newCreatedCnt += 1
+				# get id of the new one
+				db.execute("select id from wr_beta.taxonomy_taxonomy where category = %s and parent_id = %s", (category, parentId))
+				new_id = db.fetchall()
 
-				try:
-					db.execute(get_id_parent_sql, get_id_parent_val)
-					id_parent = db.fetchall()
-
-					# insert sub-category into db with new created parent
-					db.callproc('add_taxonomy', (category , id_parent, category, 1,0,1,None))
-					print("new parent created: ", category, id_parent)
-					newCreatedCnt += 1
-					logFile.write("new created: " + category)
-
-				except Exception as e:
-					logFile.write(str(e))
-					# raise
-				else:
-					pass
-				finally:
-					pass
+				# update parentId
+				parentId = new_id[0][0]
 
 			else:
 				for res in result:
-					# print(category, '=>' ,res)
-					try:
+					print("res: ", res)
 
-						db.execute("select * from wr_beta.taxonomy_taxonomy where category = %s and parent_id = %s", (category, res[0],))
-						check = db.fetchall()
+					parentId = res[0]
 
-						if len(check) == 0:
-							db.callproc('add_taxonomy', (category , res[0], category, 1,0,1,None))
-							logFile.write("new created: " + category)
-							newCreatedCnt += 1
-							print("new created: ", category, res[0])
-					except Exception as e:
-						# print('res = ', res)
-						logFile.write(str(e) +  ' => ' + str(res))
-						# raise
-					else:
-						pass
-					finally:
-						pass
+			for i in range(1, 4):
+				print("current: ", e[i], "i: ", i)
+
+				category = e[i].strip()
+
+				if category == '': break
+				# check the current category is existing or not
+
+				print("parentId = ", parentId, "category = ", category)
+				db.execute("select id from wr_beta.taxonomy_taxonomy where category = %s and parent_id = %s", (category, parentId))
+				curr_result = db.fetchall()
+				if len(curr_result) > 0:
+					print("curr_result = ", curr_result)
+					parentId = curr_result[0][0]
+					continue
+				else:
+					db.callproc('add_taxonomy', (category , parentId, category, 1,0,1,None))
+					db.execute("select id from wr_beta.taxonomy_taxonomy where category = %s and parent_id = %s", (category, parentId))
+					newCreatedCnt += 1
+
+					logFile.write("new created: " + category + " with parentId = " + str(parentId))
+					new_id = db.fetchall()
+
+					parentId = new_id
+
 
 		except Exception as e:
 			logFile.write(str(e))
@@ -121,13 +108,10 @@ for e in data["WR Biz Taxonomy Yelp Mapping"]:
 		finally:
 			pass
 
+
 print('newCreatedCnt = ', newCreatedCnt)
 file = open("result.txt","w")
 # file.write(json.dumps(data))
 
 print("DONE")
 
-# 9 - 4
-# 8 - 3
-# 7 - 2
-# 6 - 1
