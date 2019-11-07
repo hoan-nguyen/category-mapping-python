@@ -18,9 +18,16 @@ data = get_data("data_categories.ods")
 
 # test call procedure
 print("CALL PROCEDURE...")
-db.execute("select * from wr_beta.taxonomy_taxonomy where category = %s and parent_id = %s", ('Internet', 296))
+# db.execute("select * from wr_beta.taxonomy_taxonomy where category = %s and parent_id = %s", ('Internet', 296))
+# check = db.fetchall()
+# print('check = ', check)
+
+
+db.execute("select id from wr_beta.taxonomy_taxonomy where category = %s and parent_id = %s", ('Photographers', 31048))
 check = db.fetchall()
 print('check = ', check)
+
+
 # db.callproc('add_taxonomy', ('TEST01' , 1,'TEST01', 1,1,1,1))
 
 # db.callproc('add_taxonomy', ('Farms' , 30995, 'Farms', 1,1,1,1))
@@ -97,7 +104,7 @@ for e in data["WR Biz Taxonomy Yelp Mapping"]:
 					logFile.write("new created: " + category + " with parentId = " + str(parentId))
 					new_id = db.fetchall()
 
-					parentId = new_id
+					parentId = new_id[0][0]
 
 
 		except Exception as e:
